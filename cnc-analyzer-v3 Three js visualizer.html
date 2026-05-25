@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>HPI CNC Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface2: #f9fafb;
+  --border: #dde1e7;
+  --border2: #c1c7cf;
+  --text: #1a1d23;
+  --muted: #6b7280;
+  --accent: #0062cc;
+  --accent-light: #e8f0fc;
+  --orange: #d4500a;
+  --orange-light: #fff0e6;
+  --green: #0d7a4e;
+  --green-light: #e6f7f0;
+  --red: #c0392b;
+  --red-light: #fdf0ef;
+  --yellow: #92650a;
+  --yellow-light: #fef9e7;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'IBM Plex Sans', sans-serif;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+/* HEADER */
+header {
+  background: var(--surface);
+  border-bottom: 2px solid var(--accent);
+  padding: 0 28px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: var(--shadow);
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { font-family: var(--mono); font-size: 16px; font-weight: 500; color: var(--accent); letter-spacing: 1px; }
+.logo b { color: var(--orange); }
+.tag { font-family: var(--mono); font-size: 10px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); padding: 2px 8px; border-radius: 2px; }
+.status { margin-left: auto; display: flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 11px; color: var(--green); }
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 2px var(--green-light); animation: blink 2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+/* LAYOUT */
+.layout {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 16px;
+  padding: 16px;
+  min-height: calc(100vh - 56px);
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+/* CARDS */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+.card-header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface2);
+  border-radius: 6px 6px 0 0;
+}
+.card-title {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.card-dot { width: 8px; height: 8px; border-radius: 50%; }
+.card-body { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+/* LEFT COLUMN */
+.left-col { display: flex; flex-direction: column; gap: 12px; }
+
+/* MODE BUTTONS */
+.mode-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mode-btn {
+  border: 1.5px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 12px 8px;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s;
+}
+.mode-btn .icon { font-size: 20px; }
+.mode-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.mode-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); font-weight: 600; }
+
+/* FORM */
+label { font-family: var(--mono); font-size: 10px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 5px; }
+select, textarea, input[type=text] {
+  width: 100%; background: var(--surface); border: 1px solid var(--border2); color: var(--text);
+  font-family: var(--sans); font-size: 14px; padding: 9px 11px; border-radius: 4px; outline: none; transition: border-color 0.15s;
+}
+select:focus, textarea:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,98,204,0.1); }
+textarea { resize: vertical; min-height: 110px; line-height: 1.6; }
+
+/* UPLOAD */
+.upload-zone {
+  border: 2px dashed var(--border2); border-radius: 4px; padding: 16px 12px;
+  text-align: center; cursor: pointer; transition: all 0.15s; position: relative; background: var(--surface2);
+}
+.upload-zone:hover { border-color: var(--accent); background: var(--accent-light); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.file-name { font-family: var(--mono); font-size: 11px; color: var(--green); margin-top: 4px; font-weight: 500; }
+
+/* DIVIDER */
+.or-div { display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.or-div::before, .or-div::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+/* RUN BUTTON */
+.run-btn {
+  background: var(--accent); color: white; border: none; border-radius: 4px;
+  font-family: var(--sans); font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
+  padding: 12px 20px; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.15s;
+}
+.run-btn:hover { background: #0052a8; box-shadow: var(--shadow-md); }
+.run-btn:disabled { background: var(--border2); cursor: not-allowed; box-shadow: none; }
+.run-btn .spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.4); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; display: none; }
+.run-btn.loading .spinner { display: block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* RIGHT COLUMN */
+.right-col { display: flex; flex-direction: column; gap: 12px; }
+.right-top { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.right-bottom { display: grid; grid-template-columns: 1fr 2fr; gap: 12px; }
+
+/* FEATURE CARDS */
+.feat-list { display: flex; flex-direction: column; gap: 8px; }
+.feat-item { border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; background: var(--surface2); }
+.feat-key { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+.feat-val { font-size: 13px; font-weight: 600; color: var(--text); }
+.feat-note { font-size: 11px; color: var(--muted); margin-top: 2px; font-style: italic; }
+
+/* TOOLING */
+.tool-item { border-left: 3px solid var(--orange); background: var(--orange-light); border-radius: 0 4px 4px 0; padding: 10px 12px; }
+.tool-name { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--orange); margin-bottom: 4px; }
+.tool-detail { font-size: 12px; color: var(--text); line-height: 1.6; }
+.speed-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.speed-tag { font-family: var(--mono); font-size: 10px; background: white; border: 1px solid #f0c8a0; color: var(--orange); padding: 2px 7px; border-radius: 2px; }
+
+/* G-CODE */
+.gcode-wrap { display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+.gcode-box {
+  background: #1e1e2e; border-radius: 4px; padding: 14px; font-family: var(--mono);
+  font-size: 11px; line-height: 1.9; overflow-y: auto; max-height: 340px;
+  white-space: pre; color: #cdd6f4;
+}
+.g-cmd { color: #89dceb; font-weight: 500; }
+.g-comment { color: #6c7086; }
+.g-coord { color: #a6e3a1; }
+.g-feed { color: #fab387; }
+.copy-btn {
+  background: transparent; border: 1px solid var(--border2); color: var(--muted);
+  font-family: var(--mono); font-size: 10px; padding: 5px 12px; border-radius: 3px;
+  cursor: pointer; transition: all 0.15s; align-self: flex-start;
+}
+.copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* VISUALIZER */
+canvas { width: 100%; border-radius: 4px; display: block; background: #1a1b2e; }
+.vis-toolbar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.vis-btn {
+  background: var(--surface2); border: 1px solid var(--border); color: var(--muted);
+  font-family: var(--mono); font-size: 10px; padding: 5px 10px; border-radius: 3px; cursor: pointer; transition: all 0.15s;
+}
+.vis-btn:hover { border-color: var(--accent); color: var(--accent); }
+.vis-btn.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+.legend-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; }
+.leg { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.leg-line { width: 18px; height: 2px; border-radius: 1px; }
+
+/* EMPTY */
+.empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 16px; gap: 6px; color: var(--muted); text-align: center; }
+.empty-icon { font-size: 28px; opacity: 0.4; }
+.empty-text { font-family: var(--mono); font-size: 11px; letter-spacing: 1px; }
+
+/* ERROR */
+.err-box { background: var(--red-light); border: 1px solid #f5c6c4; border-radius: 4px; padding: 10px 14px; font-family: var(--mono); font-size: 11px; color: var(--red); line-height: 1.6; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* COSTING PANEL */
+.cost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cost-field { display: flex; flex-direction: column; gap: 4px; }
+.cost-field label { font-family: var(--mono); font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin: 0; }
+.cost-input {
+  width: 100%; background: var(--surface); border: 1px solid var(--border2);
+  color: var(--text); font-family: var(--mono); font-size: 13px; font-weight: 600;
+  padding: 7px 10px; border-radius: 4px; outline: none; transition: border-color 0.15s;
+}
+.cost-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,98,204,0.1); }
+.cost-input.ai-estimated { border-color: var(--orange); background: var(--orange-light); }
+.cost-input.user-modified { border-color: var(--green); background: var(--green-light); }
+.cost-hint { font-size: 10px; color: var(--muted); font-style: italic; }
+.cost-summary {
+  background: var(--accent); color: white; border-radius: 4px;
+  padding: 14px 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;
+  margin-top: 4px;
+}
+.cost-sum-item { text-align: center; }
+.cost-sum-val { font-family: var(--mono); font-size: 18px; font-weight: 600; }
+.cost-sum-lbl { font-size: 10px; opacity: 0.8; margin-top: 2px; letter-spacing: 0.5px; }
+.cost-divider { grid-column: 1/-1; height: 1px; background: rgba(255,255,255,0.2); margin: 2px 0; }
+.setup-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ai-badge { display: inline-block; font-family: var(--mono); font-size: 8px; background: var(--orange-light); color: var(--orange); border: 1px solid rgba(212,80,10,0.3); padding: 1px 5px; border-radius: 2px; margin-left: 4px; vertical-align: middle; }
+.mhr-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* DRAWING PREVIEW */
+.drawing-preview {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--surface2);
+  display: none;
+  flex-direction: column;
+}
+.drawing-preview.visible { display: flex; }
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+}
+.preview-toolbar .pname { margin-right: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+.zoom-btn {
+  background: transparent; border: 1px solid var(--border2); color: var(--muted);
+  font-family: var(--mono); font-size: 9px; padding: 2px 7px; border-radius: 2px; cursor: pointer;
+}
+.zoom-btn:hover { border-color: var(--accent); color: var(--accent); }
+.preview-content {
+  width: 100%;
+  max-height: 280px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8e8e8;
+  transition: max-height 0.2s;
+}
+.preview-content.expanded { max-height: 600px; }
+.preview-content img, .preview-content canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+/* Fullscreen overlay */
+.preview-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0,0,0,0.92);
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  cursor: zoom-out;
+}
+.preview-overlay.show { display: flex; }
+.preview-overlay img, .preview-overlay canvas {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.8);
+}
+.overlay-close {
+  position: fixed;
+  top: 16px; right: 20px;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+  font-family: var(--mono);
+  opacity: 0.7;
+  z-index: 1001;
+}
+.overlay-close:hover { opacity: 1; }
+
+@media(max-width:900px) {
+  .layout { grid-template-columns: 1fr; }
+  .right-top, .right-bottom { grid-template-columns: 1fr; }
+  .cost-grid { grid-template-columns: 1fr; }
+  .setup-row { grid-template-columns: 1fr 1fr; }
+  .cost-summary { grid-template-columns: 1fr 1fr; }
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+<header>
+  <div class="logo">HPI <b>CNC</b> ANALYZER</div>
+  <div class="tag">FANUC · TURNING · MILLING</div>
+  <div class="status"><div class="status-dot"></div>SYSTEM READY</div>
+  <button onclick="openKeyModal()" style="margin-left:8px;background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:3px;cursor:pointer;">⚙ GEMINI KEY</button>
+</header>
+
+<div id="keyBanner" style="background:#e8f4fd;border-bottom:1px solid #b3d8f5;padding:8px 28px;font-family:var(--mono);font-size:11px;color:#1a4a6b;display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+  <span>✅ Free — powered by Google Gemini 2.5 Flash Lite. No proxy, no billing.</span>
+  <span>Get free key at <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#1a56a0;font-weight:600;">aistudio.google.com/apikey</a></span>
+  <span style="margin-left:auto">Key: <span id="keyStatus" style="font-weight:500">not set</span></span>
+</div>
+<div class="layout">
+  <!-- LEFT -->
+  <div class="left-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-dot" style="background:var(--accent)"></div>
+        <div class="card-title">Machine & Input</div>
+      </div>
+      <div class="card-body">
+        <div>
+          <label>Machine Mode</label>
+          <div class="mode-row">
+            <button class="mode-btn active" id="btnT" onclick="setMode('turning')"><span class="icon">⚙️</span>Turning (Lathe)</button>
+            <button class="mode-btn" id="btnM" onclick="setMode('milling')"><span class="icon">🔩</span>Milling (VMC)</button>
+          </div>
+        </div>
+        <div>
+          <label>Material</label>
+          <select id="material">
+            <option value="EN19/EN24 alloy steel">EN19 / EN24 Alloy Steel</option>
+            <option value="mild steel EN8/EN1A">Mild Steel (EN8 / EN1A)</option>
+            <option value="stainless steel SS304/SS316">Stainless Steel (SS304 / SS316)</option>
+            <option value="aluminium">Aluminium</option>
+            <option value="cast iron">Cast Iron</option>
+          </select>
+        </div>
+        <div>
+          <label>Upload Drawing (PDF or Image)</label>
+          <div class="upload-zone" id="uz">
+            <input type="file" accept=".pdf,image/*" id="fileInput" onchange="handleFile(event)"/>
+            <div class="upload-label">📄 DROP PDF / IMAGE OR CLICK TO BROWSE</div>
+            <div class="file-name" id="fileName"></div>
+          </div>
+        </div>
+        <!-- DRAWING PREVIEW -->
+        <div class="drawing-preview" id="drawingPreview">
+          <div class="preview-toolbar">
+            <span class="pname" id="previewName">—</span>
+            <button class="zoom-btn" onclick="toggleExpand()">⤢ EXPAND</button>
+            <button class="zoom-btn" onclick="openOverlay()">⛶ FULLSCREEN</button>
+          </div>
+          <div class="preview-content" id="previewContent">
+            <img id="previewImg" src="" alt="Drawing preview" style="display:none"/>
+            <canvas id="pdfCanvas" style="display:none"></canvas>
+          </div>
+        </div>
+
+        <!-- FULLSCREEN OVERLAY -->
+        <div class="preview-overlay" id="previewOverlay" onclick="closeOverlay()">
+          <div class="overlay-close" onclick="closeOverlay()">✕</div>
+          <img id="overlayImg" src="" style="display:none"/>
+          <canvas id="overlayCanvas" style="display:none"></canvas>
+        </div>
+
+        <div class="or-div">OR DESCRIBE COMPONENT</div>
+        <div>
+          <label>Component Description / Dimensions</label>
+          <textarea id="desc" placeholder="e.g. Stepped shaft, OD 60→40→25mm, total length 180mm, M30×2 thread, 3mm groove at shoulder, Ra 1.6, h6 tolerance on 40mm dia..."></textarea>
+        </div>
+        <div id="errBox"></div>
+        <button class="run-btn" id="runBtn" onclick="run()">
+          <div class="spinner"></div>
+          <span id="btnTxt">▶ Analyze &amp; Generate G-Code</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-col">
+    <div class="right-top">
+      <!-- FEATURES -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot" style="background:var(--accent)"></div>
+          <div class="card-title">Extracted Features</div>
+        </div>
+        <div class="card-body" id="featBody">
+          <div class="empty"><div class="empty-icon">📐</div><div class="empty-text">AWAITING ANALYSIS</div></div>
+        </div>
+      </div>
+      <!-- TOOLING -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot" style="background:var(--orange)"></div>
+          <div class="card-title">Tooling Recommendations</div>
+        </div>
+        <div class="card-body" id="toolBody">
+          <div class="empty"><div class="empty-icon">🔧</div><div class="empty-text">AWAITING ANALYSIS</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="right-bottom">
+      <!-- G-CODE -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot" style="background:var(--green)"></div>
+          <div class="card-title">Fanuc G-Code</div>
+        </div>
+        <div class="card-body" id="gcodeBody">
+          <div class="empty"><div class="empty-icon">💾</div><div class="empty-text">G-CODE OUTPUT</div></div>
+        </div>
+      </div>
+      <!-- VISUALIZER -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-dot" style="background:var(--yellow)"></div>
+          <div class="card-title">3D Toolpath Visualizer — Three.js GCode Engine</div>
+          <span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--muted)">PARSES ACTUAL G-CODE</span>
+        </div>
+        <div class="card-body" style="padding:10px;gap:8px;">
+          <div class="vis-toolbar">
+            <button class="vis-btn active" id="bRapid" onclick="toggleRapid()">G00 RAPID</button>
+            <button class="vis-btn active" id="bFeed" onclick="toggleFeed()">G01 FEED</button>
+            <button class="vis-btn active" id="bArc" onclick="toggleArc()">G02/G03 ARC</button>
+            <button class="vis-btn" onclick="resetCamera()">⟳ RESET VIEW</button>
+            <button class="vis-btn" onclick="toggleOrtho()">⧠ ORTHO</button>
+          </div>
+          <div id="threeContainer" style="width:100%;height:340px;background:#1a1b2e;border-radius:4px;overflow:hidden;position:relative;">
+            <div id="visEmpty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:rgba(255,255,255,0.3);font-family:var(--mono);font-size:11px;gap:6px;">
+              <div style="font-size:28px;opacity:0.3">🔩</div>
+              <div>GENERATE G-CODE TO VISUALIZE TOOLPATH</div>
+              <div style="font-size:9px;opacity:0.6">Powered by Three.js GCodeLoader · Parses real Fanuc G-code</div>
+            </div>
+          </div>
+          <div class="legend-row">
+            <div class="leg"><div class="leg-line" style="background:#ff4444"></div>G00 RAPID</div>
+            <div class="leg"><div class="leg-line" style="background:#44dd66"></div>G01 FEED</div>
+            <div class="leg"><div class="leg-line" style="background:#4488ff"></div>G02/G03 ARC</div>
+            <div class="leg" style="font-family:var(--mono);font-size:9px;color:var(--muted);margin-left:auto">🖱 DRAG=ROTATE · SCROLL=ZOOM · RIGHT=PAN</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- COSTING PANEL -->
+    <div class="card" id="costingCard">
+      <div class="card-header">
+        <div class="card-dot" style="background:var(--green)"></div>
+        <div class="card-title">Setup & Machining Time Estimator — Cost Calculator</div>
+        <span style="margin-left:auto;font-family:var(--mono);font-size:9px;color:var(--orange)">🟠 AI ESTIMATED &nbsp; 🟢 MODIFIED</span>
+      </div>
+      <div class="card-body">
+
+        <!-- MHR INPUTS -->
+        <div>
+          <label>Machine Hour Rates (₹/hr) — enter your actual MHR</label>
+          <div class="mhr-row">
+            <div class="cost-field">
+              <label>Machining MHR (₹/hr)</label>
+              <input type="number" class="cost-input" id="mhrMachine" value="450" onchange="recalcCost()" min="0"/>
+            </div>
+            <div class="cost-field">
+              <label>Setup MHR (₹/hr)</label>
+              <input type="number" class="cost-input" id="mhrSetup" value="250" onchange="recalcCost()" min="0"/>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <!-- SETUP PARAMS -->
+        <div>
+          <label>Setup Parameters <span class="ai-badge">AI ESTIMATED — EDITABLE</span></label>
+          <div class="setup-row">
+            <div class="cost-field">
+              <label>No. of Setups</label>
+              <input type="number" class="cost-input ai-estimated" id="numSetups" value="1" min="1" onchange="onUserEdit(this);recalcCost()"/>
+              <div class="cost-hint">Chucking changes / re-clamp</div>
+            </div>
+            <div class="cost-field">
+              <label>Setup Time / Setup (min)</label>
+              <input type="number" class="cost-input ai-estimated" id="setupTimeEach" value="20" min="1" onchange="onUserEdit(this);recalcCost()"/>
+              <div class="cost-hint">Fixture, offset, trial cut</div>
+            </div>
+            <div class="cost-field">
+              <label>Batch Size (pcs)</label>
+              <input type="number" class="cost-input" id="batchSize" value="10" min="1" onchange="recalcCost()"/>
+              <div class="cost-hint">Amortises setup cost</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <!-- MACHINING PARAMS -->
+        <div>
+          <label>Machining Parameters <span class="ai-badge">AI ESTIMATED — EDITABLE</span></label>
+          <div class="cost-grid">
+            <div class="cost-field">
+              <label>Machining Time / Pc (min)</label>
+              <input type="number" class="cost-input ai-estimated" id="machTimeEach" value="15" min="0.1" step="0.5" onchange="onUserEdit(this);recalcCost()"/>
+              <div class="cost-hint">Cycle time at machine</div>
+            </div>
+            <div class="cost-field">
+              <label>Feed Rate (mm/rev or mm/min)</label>
+              <input type="number" class="cost-input ai-estimated" id="feedRate" value="0.15" min="0.01" step="0.01" onchange="onUserEdit(this);recalcCost()"/>
+              <div class="cost-hint">Turning: mm/rev · Milling: mm/min</div>
+            </div>
+            <div class="cost-field">
+              <label>Depth of Cut — Roughing (mm)</label>
+              <input type="number" class="cost-input ai-estimated" id="docRough" value="2.0" min="0.1" step="0.1" onchange="onUserEdit(this);recalcCost()"/>
+            </div>
+            <div class="cost-field">
+              <label>Depth of Cut — Finishing (mm)</label>
+              <input type="number" class="cost-input ai-estimated" id="docFinish" value="0.3" min="0.05" step="0.05" onchange="onUserEdit(this);recalcCost()"/>
+            </div>
+            <div class="cost-field">
+              <label>Loading / Unloading (min)</label>
+              <input type="number" class="cost-input ai-estimated" id="loadTime" value="3" min="0" step="0.5" onchange="onUserEdit(this);recalcCost()"/>
+            </div>
+            <div class="cost-field">
+              <label>Inspection Time / Pc (min)</label>
+              <input type="number" class="cost-input" id="inspTime" value="2" min="0" step="0.5" onchange="recalcCost()"/>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:1px;background:var(--border)"></div>
+
+        <!-- COST SUMMARY -->
+        <div>
+          <label>Cost Summary</label>
+          <div class="cost-summary" id="costSummary">
+            <div class="cost-sum-item">
+              <div class="cost-sum-val" id="csSetup">₹ —</div>
+              <div class="cost-sum-lbl">SETUP COST / PC</div>
+            </div>
+            <div class="cost-sum-item">
+              <div class="cost-sum-val" id="csMachine">₹ —</div>
+              <div class="cost-sum-lbl">MACHINING COST / PC</div>
+            </div>
+            <div class="cost-sum-item">
+              <div class="cost-sum-val" id="csTotal">₹ —</div>
+              <div class="cost-sum-lbl">TOTAL CONVERSION / PC</div>
+            </div>
+            <div class="cost-divider"></div>
+            <div class="cost-sum-item">
+              <div class="cost-sum-val" id="csCycleTime">— min</div>
+              <div class="cost-sum-lbl">TOTAL CYCLE TIME / PC</div>
+            </div>
+            <div class="cost-sum-item">
+              <div class="cost-sum-val" id="csSetupTotal">— min</div>
+              <div class="cost-sum-lbl">TOTAL SETUP TIME</div>
+            </div>
+            <div class="cost-sum-item">
+              <div class="cost-sum-val" id="csBatchCost">₹ —</div>
+              <div class="cost-sum-lbl">BATCH CONVERSION TOTAL</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:var(--mono);">
+            * Conversion cost only (excludes raw material, overheads, profit). Modify any input above to update instantly.
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let mode = 'turning';
+let fileData = null; // {base64, mediaType}
+let tpData = [];
+let showRapid = true, showFeed = true;
+let animId = null;
+let stockInfo = null;
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('btnT').classList.toggle('active', m==='turning');
+  document.getElementById('btnM').classList.toggle('active', m==='milling');
+}
+
+function handleFile(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  document.getElementById('fileName').textContent = '✓ ' + f.name;
+  document.getElementById('previewName').textContent = f.name;
+
+  const r = new FileReader();
+  r.onload = ev => {
+    const dataUrl = ev.target.result;
+    const parts = dataUrl.split(',');
+    fileData = { base64: parts[1], mediaType: f.type || 'application/pdf' };
+
+    const preview = document.getElementById('drawingPreview');
+    const img = document.getElementById('previewImg');
+    const pdfCv = document.getElementById('pdfCanvas');
+    preview.classList.add('visible');
+
+    if (f.type === 'application/pdf') {
+      // Render first page of PDF using PDF.js CDN
+      img.style.display = 'none';
+      pdfCv.style.display = 'block';
+      renderPdfPreview(dataUrl, pdfCv);
+    } else {
+      // Image file — show directly
+      pdfCv.style.display = 'none';
+      img.style.display = 'block';
+      img.src = dataUrl;
+      // Also set overlay
+      document.getElementById('overlayImg').src = dataUrl;
+      document.getElementById('overlayImg').style.display = 'block';
+      document.getElementById('overlayCanvas').style.display = 'none';
+    }
+  };
+  r.readAsDataURL(f);
+}
+
+async function renderPdfPreview(dataUrl, canvas) {
+  try {
+    // Load PDF.js dynamically
+    if (!window.pdfjsLib) {
+      await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+    const pdf = await pdfjsLib.getDocument(dataUrl).promise;
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 1.5 });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+    // Copy to overlay canvas
+    const oc = document.getElementById('overlayCanvas');
+    oc.width = viewport.width;
+    oc.height = viewport.height;
+    oc.getContext('2d').drawImage(canvas, 0, 0);
+    oc.style.display = 'block';
+    document.getElementById('overlayImg').style.display = 'none';
+  } catch(err) {
+    canvas.style.display = 'none';
+    const img = document.getElementById('previewImg');
+    img.style.display = 'block';
+    img.src = dataUrl; // fallback for non-PDF
+  }
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+let previewExpanded = false;
+function toggleExpand() {
+  previewExpanded = !previewExpanded;
+  document.getElementById('previewContent').classList.toggle('expanded', previewExpanded);
+  document.querySelector('.zoom-btn').textContent = previewExpanded ? '⤡ COLLAPSE' : '⤢ EXPAND';
+}
+
+function openOverlay() {
+  document.getElementById('previewOverlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeOverlay() {
+  document.getElementById('previewOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+function openKeyModal() {
+  const k = prompt('Enter Gemini API key (AIza...):\n\nGet free key at aistudio.google.com/apikey');
+  if (k && k.trim()) { localStorage.setItem('hpi_gemini_key', k.trim()); updateKeyStatus(); }
+}
+function updateKeyStatus() {
+  const k = localStorage.getItem('hpi_gemini_key');
+  const el = document.getElementById('keyStatus');
+  if (k) { el.textContent = 'SET ✓'; el.style.color='#0d7a4e'; document.getElementById('keyBanner').style.display='none'; }
+  else { el.textContent = 'NOT SET'; el.style.color='#c0392b'; }
+}
+updateKeyStatus();
+
+function showErr(msg) { document.getElementById('errBox').innerHTML = `<div class="err-box">⚠ ${msg}</div>`; }
+function clearErr() { document.getElementById('errBox').innerHTML = ''; }
+function showErrGeneric(msg) { showErr(msg); }
+
+async function run() {
+  clearErr();
+  const desc = document.getElementById('desc').value.trim();
+  const mat = document.getElementById('material').value;
+  if (!desc && !fileData) { showErr('Please enter a description or upload a drawing.'); return; }
+
+  const apiKey = localStorage.getItem('hpi_gemini_key');
+  if (!apiKey) { openKeyModal(); showErr('Gemini API key required.'); return; }
+
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true; btn.classList.add('loading');
+  document.getElementById('btnTxt').textContent = 'Analyzing...';
+  setLoading();
+
+  try {
+    // Build Gemini parts
+    const parts = [];
+    if (fileData) {
+      parts.push({ inline_data: { mime_type: fileData.mediaType, data: fileData.base64 } });
+    }
+    parts.push({ text: buildPrompt(desc, mat) });
+
+    // Stream from Gemini
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:streamGenerateContent?alt=sse`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          contents: [{ parts }],
+          generationConfig: { temperature: 0.15, maxOutputTokens: 65536 }
+        })
+      }
+    );
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.error?.message || `Gemini error ${res.status}`);
+    }
+
+    // Collect full streamed response
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value, { stream: true });
+      for (const line of chunk.split('\n')) {
+        if (!line.startsWith('data: ')) continue;
+        const jsonStr = line.slice(6).trim();
+        if (!jsonStr || jsonStr === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const pp = parsed.candidates?.[0]?.content?.parts;
+          if (pp) fullText += pp.map(p => p.text || '').join('');
+        } catch(e) {}
+      }
+    }
+
+    if (!fullText) throw new Error('Empty response from Gemini. Try again.');
+
+    // Extract G-code block (before JSON parse — G-code has special chars)
+    let gcodeRaw = '';
+    const gcodeMatch = fullText.match(/===GCODE_START===([\s\S]*?)===GCODE_END===/);
+    if (gcodeMatch) gcodeRaw = gcodeMatch[1].trim();
+
+    // Extract JSON block
+    const jsonMatch = fullText.match(/===JSON_START===([\s\S]*?)===JSON_END===/);
+    let result;
+    if (jsonMatch) {
+      let jStr = jsonMatch[1].trim()
+        .replace(/```json\s*/gi,'')
+        .replace(/```/g,'')
+        .trim();
+      // Collapse multiline JSON into single line safely
+      try {
+        result = JSON.parse(jStr);
+      } catch(e) {
+        // Try extracting just the JSON object
+        const objStart = jStr.indexOf('{');
+        const objEnd = jStr.lastIndexOf('}');
+        if (objStart !== -1 && objEnd !== -1) {
+          result = JSON.parse(jStr.slice(objStart, objEnd + 1));
+        } else {
+          throw new Error('Could not parse AI response JSON. Please try again.');
+        }
+      }
+    } else {
+      // Fallback: find outermost JSON object in full response
+      const start = fullText.indexOf('{');
+      const end = fullText.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        result = JSON.parse(fullText.slice(start, end + 1));
+      } else {
+        throw new Error('Could not parse AI response. Please try again.');
+      }
+    }
+    if (gcodeRaw) result.gcode = gcodeRaw;
+    render(result);
+
+  } catch(err) {
+    let msg = err.message;
+    if (msg.includes('API_KEY_INVALID') || msg.includes('API key not valid')) msg = 'Invalid Gemini API key. Click GEMINI KEY to update it.';
+    showErr('Analysis error: ' + msg);
+    setEmpty();
+  } finally {
+    btn.disabled = false; btn.classList.remove('loading');
+    document.getElementById('btnTxt').textContent = '▶ Analyze & Generate G-Code';
+  }
+}
+
+function buildPrompt(desc, mat) {
+  const isTurning = mode === 'turning';
+
+  const turningTemplate = `
+O0001 (PROGRAM NAME)
+(MATERIAL: REPLACE_MAT)
+(COMPONENT: REPLACE_COMP)
+(============================)
+(TOOL 1 - ROUGHING / CNMG INSERT)
+N10 G21 G40 G99         (MM, CANCEL COMP, FEED/REV)
+N20 G28 U0. W0.         (REFERENCE RETURN)
+N30 T0100               (CANCEL OFFSET)
+N40 G00 X200. Z200.     (SAFE POSITION)
+N50 T0101               (CALL TOOL 1 + OFFSET 1)
+N60 G96 S180 M03        (CSS 180 M/MIN, SPINDLE ON)
+N70 G50 S2500           (MAX RPM CLAMP)
+N80 G00 X[STOCK_DIA+2]. Z2. M08   (APPROACH + COOLANT)
+(--- G71 ROUGHING CYCLE ---)
+N90  G71 U2.0 R0.5                (DEPTH OF CUT 2MM, RETRACT 0.5MM)
+N100 G71 P110 Q180 U0.4 W0.1 F0.25 (PROFILE N110-N180, X ALLOW 0.4, Z ALLOW 0.1)
+(--- PROFILE DEFINITION ---)
+N110 G00 X[DIA1].                 (APPROACH FIRST DIAMETER - DIAMETER VALUE)
+N120 G01 Z0. F0.15                (FACE TO Z0)
+N130 G01 X[DIA1]. Z-[LEN1].      (TURN FIRST STEP)
+N140 G01 X[DIA2].                 (STEP UP TO NEXT DIAMETER)
+N150 G01 Z-[LEN2].               (TURN SECOND STEP)
+N160 G01 X[DIA3].                 (STEP UP)
+N170 G01 Z-[LEN3].               (TURN THIRD STEP)
+N180 G01 X[STOCK_DIA+2].         (RETRACT IN X - END OF PROFILE)
+(--- FINISH CYCLE ---)
+N190 G00 X200. Z200. M09
+N200 T0100
+N210 T0202                        (CALL FINISHING TOOL)
+N220 G96 S220 M03
+N230 G50 S3000
+N240 G00 X[STOCK_DIA+2]. Z2. M08
+N250 G70 P110 Q180                (FINISH USING SAME PROFILE)
+N260 G00 X200. Z200. M09
+(--- THREADING IF REQUIRED ---)
+N270 T0100
+N280 T0303                        (THREAD TOOL)
+N290 G97 S600 M03                 (CONSTANT RPM FOR THREADING)
+N300 G00 X[THREAD_MAJOR+2]. Z5.
+(LINE 1: P=mmrraa mm=finish passes rr=chamfer aa=flank angle 60deg metric)
+N310 G76 P020060 Q100 R0.05
+(LINE 2: X=minor dia Z=thread end R=taper(0=straight) P=depth microns Q=first cut microns F=pitch)
+N320 G76 X[THREAD_MINOR]. Z-[THREAD_LEN]. R0.0 P[THREAD_DEPTH_MICRONS] Q[FIRST_CUT_MICRONS] F[PITCH]
+N330 G00 X200. Z200. M09
+N340 T0100
+N350 M30
+%`;
+
+  const millingTemplate = `
+O0001 (PROGRAM NAME)
+(MATERIAL: REPLACE_MAT)
+(COMPONENT: REPLACE_COMP)
+(============================)
+N10 G21 G17 G40 G80 G90  (MM, XY PLANE, CANCEL COMP/CYCLE, ABSOLUTE)
+N20 G28 G91 Z0.           (Z HOME)
+N30 G90                   (BACK TO ABSOLUTE)
+(--- TOOL 1: FACE MILL ---)
+N40  T01 M06              (TOOL CHANGE)
+N50  G54                  (WORK OFFSET)
+N60  S1200 M03            (SPINDLE ON)
+N70  G00 X-10. Y-10. M08 (APPROACH + COOLANT)
+N80  G43 H01 Z5.          (LENGTH COMP)
+N90  G01 Z-0.5 F200.      (PLUNGE TO FACE DEPTH)
+N100 G01 X[PART_X+10]. F400.  (FACE PASS 1)
+N110 G00 Y[STEP].         (INDEX Y)
+N120 G01 X-10. F400.      (FACE PASS 2)
+N130 G00 Z5.              (RETRACT)
+(--- TOOL 2: END MILL CONTOUR ---)
+N140 T02 M06
+N150 S2000 M03
+N160 G00 X[CSTART_X]. Y[CSTART_Y]. M08
+N170 G43 H02 Z5.
+N180 G01 Z-[DEPTH]. F150.    (PLUNGE)
+N190 G41 D02               (CUTTER COMP LEFT)
+N200 G01 X[P1_X]. Y[P1_Y]. F300.
+N210 G01 X[P2_X]. Y[P2_Y].
+N220 G02 X[P3_X]. Y[P3_Y]. R[RAD]. (ARC)
+N230 G01 X[P4_X]. Y[P4_Y].
+N240 G40 G01 X[CSTART_X]. Y[CSTART_Y].  (CANCEL COMP)
+N250 G00 Z5.
+(--- TOOL 3: DRILL ---)
+N260 T03 M06
+N270 S1500 M03
+N280 G00 X[HOLE_X]. Y[HOLE_Y]. M08
+N290 G43 H03 Z5.
+N300 G81 Z-[HOLE_DEPTH]. R2. F120.   (DRILLING CANNED CYCLE)
+N310 X[HOLE2_X]. Y[HOLE2_Y].          (NEXT HOLE)
+N320 G80                              (CANCEL CYCLE)
+N330 G00 Z50. M09
+N340 G28 G91 Z0.
+N350 M30
+%`;
+
+  const template = isTurning ? turningTemplate : millingTemplate;
+
+  return `You are an expert CNC programmer with 20+ years experience on Fanuc 0i-TD (lathe) and Fanuc 0i-MD (VMC).
+Material: ${mat}
+${desc ? 'Component description: ' + desc : 'Analyze the uploaded engineering drawing carefully.'}
+
+CRITICAL RULES — these are exact Fanuc 0i-TD/MD requirements, not suggestions:
+
+TURNING RULES:
+1. G71 MUST use TWO separate blocks: Block 1 = "G71 U[doc] R[retract]" Block 2 = "G71 P[start] Q[end] U[x_allow] W[z_allow] F[feed]"
+2. G76 MUST use TWO separate blocks: Block 1 = "G76 P[mmrraa] Q[min_cut] R[finish_depth]" Block 2 = "G76 X[minor] Z[end] R[taper] P[depth_microns] Q[first_cut_microns] F[pitch]"
+3. Thread depth P and first cut Q in G76 Line 2 are in MICRONS (no decimal). Example M20x2: depth = 1299 microns → P1299, first cut Q400
+4. Use G96 (CSS mode) for turning/facing. Use G97 (RPM) for threading and grooving only
+5. Use G99 (feed per rev mm/rev) for turning. Use G98 (feed per min) only for drilling
+6. Always G50 S[maxRPM] after G96 to clamp spindle speed
+7. Tool change sequence: T0100 (cancel) → safe position → T[tt][oo] (call tool+offset)
+8. X coordinates are DIAMETER values (not radius) on lathe
+9. Z is negative going into the part. Z0 = face of part
+10. Always end with G28 U0. W0. before M30
+
+MILLING RULES:
+1. Always G21 G17 G40 G80 G90 in first block
+2. G28 G91 Z0. for Z home before tool change
+3. G43 H[tool] for length compensation after every tool change
+4. G41/G42 for cutter compensation with G40 cancel before retract
+5. G81 for drilling — always G80 to cancel
+6. Coordinates in absolute G90 unless explicitly incremental
+
+REPLY FORMAT — exactly two blocks, no other text:
+
+===JSON_START===
+{"features":[{"label":"Component Type","value":"REPLACE"},{"label":"Overall Dimensions","value":"REPLACE"},{"label":"Critical Tolerances","value":"REPLACE"},{"label":"Surface Finish","value":"REPLACE"},{"label":"Key Features","value":"REPLACE"},{"label":"Operations Sequence","value":"REPLACE"}],"tooling":[{"name":"T01 - REPLACE","detail":"REPLACE grade/geometry/nose radius","speeds":["Vc: Xm/min","f: Xmm/rev","ap: Xmm","RPM: XXXX"]}],"toolpath":[${isTurning ?
+  // TURNING toolpath: XZ plane, X=diameter(0-150), Z=(-200 to 5), tool starts top-right, moves left
+  '{"type":"rapid","from":[80,5],"to":[80,2]},{"type":"rapid","from":[80,2],"to":[62,2]},{"type":"feed","from":[62,2],"to":[62,0]},{"type":"feed","from":[62,0],"to":[40,0]},{"type":"feed","from":[40,0],"to":[40,-50]},{"type":"feed","from":[40,-50],"to":[30,-50]},{"type":"feed","from":[30,-50],"to":[30,-100]},{"type":"feed","from":[30,-100],"to":[20,-100]},{"type":"feed","from":[20,-100],"to":[20,-150]},{"type":"rapid","from":[20,-150],"to":[80,-150]},{"type":"rapid","from":[80,-150],"to":[80,5]}'
+  :
+  // MILLING toolpath: XY plane, X=0-200, Y=0-150
+  '{"type":"rapid","from":[0,0],"to":[-10,-10]},{"type":"rapid","from":[-10,-10],"to":[-10,80]},{"type":"feed","from":[-10,80],"to":[160,80]},{"type":"feed","from":[160,80],"to":[160,60]},{"type":"feed","from":[160,60],"to":[-10,60]},{"type":"rapid","from":[-10,60],"to":[20,20]},{"type":"feed","from":[20,20],"to":[140,20]},{"type":"feed","from":[140,20],"to":[140,100]},{"type":"feed","from":[140,100],"to":[20,100]},{"type":"feed","from":[20,100],"to":[20,20]},{"type":"rapid","from":[20,20],"to":[75,60]},{"type":"feed","from":[75,60],"to":[75,40]}'
+}],"stock":{"width":${isTurning ? 160 : 180},"height":${isTurning ? 70 : 120}},"costing":{"num_setups":1,"setup_time_min":25,"machining_time_min":18,"load_unload_min":3,"feed_rate":${isTurning ? 0.2 : 150},"doc_rough":2.0,"doc_finish":0.3,"notes":"Replace with actual estimates for this component"}}
+===JSON_END===
+
+===GCODE_START===
+${template.replace('REPLACE_MAT', mat).replace('REPLACE_COMP', desc || 'FROM DRAWING')}
+===GCODE_END===
+
+Now replace ALL placeholder values (REPLACE_*, [VARIABLE] items) with correct calculated values for the actual component described or shown in the drawing. Use real diameters, lengths, thread specs. The JSON toolpath must have 15-25 moves reflecting the actual component profile in the ${isTurning ? 'XZ plane (X=diameter, Z=negative into part)' : 'XY plane'}.`;
+}
+
+// ── THREE.JS GCODE VISUALIZER ────────────────────────────────────
+let threeScene, threeCamera, threeRenderer, threeControls;
+let rapidGroup, feedGroup, arcGroup;
+let showRapidV = true, showFeedV = true, showArcV = true;
+let isOrtho = false, perspCamera, orthoCamera;
+let threeInitialized = false;
+let animId = null;
+
+function initThree() {
+  const container = document.getElementById('threeContainer');
+  const W = container.clientWidth, H = container.clientHeight;
+
+  threeScene = new THREE.Scene();
+  threeScene.background = new THREE.Color(0x1a1b2e);
+
+  // Cameras
+  perspCamera = new THREE.PerspectiveCamera(50, W/H, 0.1, 10000);
+  orthoCamera = new THREE.OrthographicCamera(-W/2, W/2, H/2, -H/2, 0.1, 10000);
+  threeCamera = perspCamera;
+
+  threeRenderer = new THREE.WebGLRenderer({ antialias: true });
+  threeRenderer.setSize(W, H);
+  threeRenderer.setPixelRatio(window.devicePixelRatio);
+  container.appendChild(threeRenderer.domElement);
+
+  // Orbit controls - manual implementation
+  setupOrbitControls(container);
+
+  // Lights
+  threeScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const dir = new THREE.DirectionalLight(0xffffff, 0.5);
+  dir.position.set(1, 2, 3);
+  threeScene.add(dir);
+
+  // Grid
+  const grid = new THREE.GridHelper(200, 20, 0x333355, 0x222244);
+  threeScene.add(grid);
+
+  // Axis helper
+  const axes = new THREE.AxesHelper(30);
+  threeScene.add(axes);
+
+  // Groups for move types
+  rapidGroup = new THREE.Group(); threeScene.add(rapidGroup);
+  feedGroup  = new THREE.Group(); threeScene.add(feedGroup);
+  arcGroup   = new THREE.Group(); threeScene.add(arcGroup);
+
+  threeInitialized = true;
+  animate();
+
+  window.addEventListener('resize', () => {
+    const W2 = container.clientWidth, H2 = container.clientHeight;
+    perspCamera.aspect = W2/H2; perspCamera.updateProjectionMatrix();
+    threeRenderer.setSize(W2, H2);
+  });
+}
+
+function animate() {
+  animId = requestAnimationFrame(animate);
+  threeRenderer.render(threeScene, threeCamera);
+}
+
+// Simple orbit controls
+let isDragging = false, isRightDrag = false;
+let prevMouse = {x:0, y:0};
+let spherical = {theta: Math.PI/4, phi: Math.PI/3, radius: 200};
+let panOffset = {x:0, y:0, z:0};
+
+function setupOrbitControls(container) {
+  container.addEventListener('mousedown', e => {
+    isDragging = true;
+    isRightDrag = e.button === 2;
+    prevMouse = {x: e.clientX, y: e.clientY};
+    e.preventDefault();
+  });
+  container.addEventListener('contextmenu', e => e.preventDefault());
+  window.addEventListener('mouseup', () => isDragging = false);
+  window.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevMouse.x;
+    const dy = e.clientY - prevMouse.y;
+    prevMouse = {x: e.clientX, y: e.clientY};
+    if (isRightDrag) {
+      panOffset.x -= dx * 0.3;
+      panOffset.y += dy * 0.3;
+    } else {
+      spherical.theta -= dx * 0.008;
+      spherical.phi = Math.max(0.05, Math.min(Math.PI-0.05, spherical.phi - dy * 0.008));
+    }
+    updateCamera();
+  });
+  container.addEventListener('wheel', e => {
+    spherical.radius = Math.max(20, spherical.radius + e.deltaY * 0.3);
+    updateCamera();
+    e.preventDefault();
+  }, {passive:false});
+  // Touch support
+  let lastTouch = null;
+  container.addEventListener('touchstart', e => { lastTouch = e.touches[0]; });
+  container.addEventListener('touchmove', e => {
+    if (!lastTouch) return;
+    const t = e.touches[0];
+    spherical.theta -= (t.clientX - lastTouch.clientX) * 0.008;
+    spherical.phi = Math.max(0.05, Math.min(Math.PI-0.05, spherical.phi - (t.clientY - lastTouch.clientY) * 0.008));
+    lastTouch = t;
+    updateCamera();
+    e.preventDefault();
+  }, {passive:false});
+}
+
+function updateCamera() {
+  const {theta, phi, radius} = spherical;
+  perspCamera.position.set(
+    radius * Math.sin(phi) * Math.sin(theta) + panOffset.x,
+    radius * Math.cos(phi) + panOffset.y,
+    radius * Math.sin(phi) * Math.cos(theta) + panOffset.z
+  );
+  perspCamera.lookAt(panOffset.x, panOffset.y, panOffset.z);
+  orthoCamera.position.copy(perspCamera.position);
+  orthoCamera.lookAt(panOffset.x, panOffset.y, panOffset.z);
+}
+
+function resetCamera() {
+  spherical = {theta: Math.PI/4, phi: Math.PI/3, radius: 200};
+  panOffset = {x:0, y:0, z:0};
+  updateCamera();
+}
+
+function toggleOrtho() {
+  isOrtho = !isOrtho;
+  threeCamera = isOrtho ? orthoCamera : perspCamera;
+  document.querySelector('.vis-btn:nth-child(5)').classList.toggle('active', isOrtho);
+}
+
+function toggleRapid() {
+  showRapidV = !showRapidV;
+  if (rapidGroup) rapidGroup.visible = showRapidV;
+  document.getElementById('bRapid').classList.toggle('active', showRapidV);
+}
+function toggleFeed() {
+  showFeedV = !showFeedV;
+  if (feedGroup) feedGroup.visible = showFeedV;
+  document.getElementById('bFeed').classList.toggle('active', showFeedV);
+}
+function toggleArc() {
+  showArcV = !showArcV;
+  if (arcGroup) arcGroup.visible = showArcV;
+  document.getElementById('bArc').classList.toggle('active', showArcV);
+}
+
+// ── REAL G-CODE PARSER ───────────────────────────────────────────
+function parseAndVisualizeGcode(gcodeText) {
+  if (!threeInitialized) initThree();
+
+  // Clear previous
+  [rapidGroup, feedGroup, arcGroup].forEach(g => {
+    while(g.children.length) g.remove(g.children[0]);
+  });
+  document.getElementById('visEmpty').style.display = 'none';
+
+  const lines = gcodeText.split('\n');
+  const state = {
+    x: 0, y: 0, z: 0,
+    modal: 'G00',   // current motion mode
+    isAbsolute: true,
+    feedPerRev: true,
+    unit: 'mm',
+    isLathe: mode === 'turning'
+  };
+
+  const allPoints = [];
+  const moves = [];
+
+  for (let line of lines) {
+    // Strip comments
+    line = line.replace(/\(.*?\)/g, '').replace(/;.*$/, '').trim().toUpperCase();
+    if (!line) continue;
+
+    // Parse words
+    const words = {};
+    const wordRegex = /([A-Z])(-?[\d.]+)/g;
+    let m;
+    while ((m = wordRegex.exec(line)) !== null) {
+      words[m[1]] = parseFloat(m[2]);
+    }
+
+    // Modal G-codes
+    if ('G' in words) {
+      const g = words['G'];
+      if ([0,1,2,3].includes(g)) state.modal = `G0${g}`;
+      if (g === 90) state.isAbsolute = true;
+      if (g === 91) state.isAbsolute = false;
+      if (g === 20) state.unit = 'inch';
+      if (g === 21) state.unit = 'mm';
+    }
+
+    // Motion commands
+    const hasMotion = 'X' in words || 'Y' in words || 'Z' in words;
+    if (!hasMotion) continue;
+
+    const prev = {x: state.x, y: state.y, z: state.z};
+    let nx = state.x, ny = state.y, nz = state.z;
+
+    if (state.isLathe) {
+      // Lathe: X=diameter, Z=axial — map to 3D as X=Z(axial), Y=X/2(radius), Z=0
+      if ('X' in words) nx = state.isAbsolute ? words['X'] : state.x + words['X'];
+      if ('Z' in words) nz = state.isAbsolute ? words['Z'] : state.z + words['Z'];
+    } else {
+      if ('X' in words) nx = state.isAbsolute ? words['X'] : state.x + words['X'];
+      if ('Y' in words) ny = state.isAbsolute ? words['Y'] : state.y + words['Y'];
+      if ('Z' in words) nz = state.isAbsolute ? words['Z'] : state.z + words['Z'];
+    }
+
+    const gcode = ('G' in words) ? `G${words['G']}` : state.modal;
+    const isRapid = gcode === 'G0' || gcode === 'G00';
+    const isArc = gcode === 'G2' || gcode === 'G02' || gcode === 'G3' || gcode === 'G03';
+
+    let from3d, to3d;
+    if (state.isLathe) {
+      from3d = new THREE.Vector3(prev.z, prev.x/2, 0);
+      to3d   = new THREE.Vector3(nz,    nx/2,    0);
+    } else {
+      from3d = new THREE.Vector3(prev.x, prev.z, prev.y);
+      to3d   = new THREE.Vector3(nx,     nz,     ny);
+    }
+
+    if (isArc && ('I' in words || 'J' in words || 'K' in words)) {
+      // Arc move
+      const i = words['I'] || 0, j = words['J'] || 0, k = words['K'] || 0;
+      const ctrOffset = state.isLathe ? new THREE.Vector3(k, i/2, 0) : new THREE.Vector3(i, k, j);
+      const center = from3d.clone().add(ctrOffset);
+      const pts = generateArcPoints(from3d, to3d, center, gcode === 'G3' || gcode === 'G03', 32);
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const mat = new THREE.LineBasicMaterial({color: 0x4488ff, linewidth: 2});
+      arcGroup.add(new THREE.Line(geo, mat));
+      allPoints.push(...pts);
+    } else {
+      // Linear move
+      const pts = [from3d, to3d];
+      const geo = new THREE.BufferGeometry().setFromPoints(pts);
+      const color = isRapid ? 0xff4444 : 0x44dd66;
+      const mat = new THREE.LineBasicMaterial({color, linewidth: isRapid ? 1 : 2});
+      const line3d = new THREE.Line(geo, mat);
+      if (isRapid) rapidGroup.add(line3d);
+      else feedGroup.add(line3d);
+      allPoints.push(from3d, to3d);
+    }
+
+    state.x = nx; state.y = ny; state.z = nz;
+  }
+
+  // Add start marker (blue sphere)
+  if (allPoints.length > 0) {
+    const sg = new THREE.SphereGeometry(2, 8, 8);
+    const sm = new THREE.MeshBasicMaterial({color: 0x4488ff});
+    const ss = new THREE.Mesh(sg, sm);
+    ss.position.copy(allPoints[0]);
+    threeScene.add(ss);
+  }
+
+  // Fit camera to toolpath
+  if (allPoints.length > 0) {
+    const box = new THREE.Box3();
+    allPoints.forEach(p => box.expandByPoint(p));
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    spherical.radius = maxDim * 2.0;
+    panOffset.x = center.x; panOffset.y = center.y; panOffset.z = center.z;
+    updateCamera();
+  }
+}
+
+function generateArcPoints(from, to, center, ccw, segments) {
+  const pts = [];
+  const startAngle = Math.atan2(from.y - center.y, from.x - center.x);
+  const endAngle   = Math.atan2(to.y   - center.y, to.x   - center.x);
+  const radius     = from.distanceTo(center);
+  let delta = endAngle - startAngle;
+  if (ccw && delta < 0) delta += Math.PI*2;
+  if (!ccw && delta > 0) delta -= Math.PI*2;
+  for (let i=0; i<=segments; i++) {
+    const t = i/segments;
+    const angle = startAngle + delta*t;
+    pts.push(new THREE.Vector3(
+      center.x + radius * Math.cos(angle),
+      center.y + radius * Math.sin(angle),
+      from.z + (to.z - from.z) * t
+    ));
+  }
+  return pts;
+}
+
+// Hook into render to visualize
+function visualizeGcode(gcodeText) {
+  if (!gcodeText || gcodeText.trim().length < 10) return;
+  try {
+    parseAndVisualizeGcode(gcodeText);
+  } catch(e) {
+    console.warn('Visualizer error:', e);
+  }
+}
+
+// Legacy stubs (no longer used but kept to avoid reference errors)
+let tpData = [], stockInfo = null, showRapid = true, showFeed = true;
+function draw() {}
+function redraw() { resetCamera(); }
+function toggleLayer() {}
+function animatePath() {}
+  const lhtml = '<div class="empty"><div class="empty-icon">⚙️</div><div class="empty-text">PROCESSING...</div></div>';
+  document.getElementById('featBody').innerHTML = lhtml;
+  document.getElementById('toolBody').innerHTML = lhtml;
+  document.getElementById('gcodeBody').innerHTML = lhtml;
+}
+function setEmpty() {
+  document.getElementById('featBody').innerHTML = '<div class="empty"><div class="empty-icon">📐</div><div class="empty-text">AWAITING ANALYSIS</div></div>';
+  document.getElementById('toolBody').innerHTML = '<div class="empty"><div class="empty-icon">🔧</div><div class="empty-text">AWAITING ANALYSIS</div></div>';
+  document.getElementById('gcodeBody').innerHTML = '<div class="empty"><div class="empty-icon">💾</div><div class="empty-text">G-CODE OUTPUT</div></div>';
+}
+
+function render(r) {
+  // Features
+  if (r.features?.length) {
+    document.getElementById('featBody').innerHTML = '<div class="feat-list">' + r.features.map(f=>`
+      <div class="feat-item">
+        <div class="feat-key">${f.label}</div>
+        <div class="feat-val">${f.value}</div>
+        ${f.note?`<div class="feat-note">${f.note}</div>`:''}
+      </div>`).join('') + '</div>';
+  }
+  // Tooling
+  if (r.tooling?.length) {
+    document.getElementById('toolBody').innerHTML = r.tooling.map(t=>`
+      <div class="tool-item">
+        <div class="tool-name">🔧 ${t.name}</div>
+        <div class="tool-detail">${t.detail}</div>
+        <div class="speed-tags">${(t.speeds||[]).map(s=>`<span class="speed-tag">${s}</span>`).join('')}</div>
+      </div>`).join('');
+  }
+  // G-code with syntax highlighting
+  if (r.gcode) {
+    const hi = r.gcode
+      .replace(/\(([^)]*)\)/g,'<span class="g-comment">($1)</span>')
+      .replace(/\b(G\d+\.?\d*|M\d+|T\d+)\b/g,'<span class="g-cmd">$1</span>')
+      .replace(/\b([XZYU]-?[\d.]+)\b/g,'<span class="g-coord">$1</span>')
+      .replace(/\b(F[\d.]+|S\d+)\b/g,'<span class="g-feed">$1</span>');
+    document.getElementById('gcodeBody').innerHTML = `
+      <div class="gcode-wrap">
+        <button class="copy-btn" onclick="copyGcode()">📋 Copy G-Code</button>
+        <div class="gcode-box" id="gcodeBox" data-raw="${encodeURIComponent(r.gcode)}">${hi}</div>
+      </div>`;
+    // ── Visualize the ACTUAL G-code via Three.js ──
+    setTimeout(() => visualizeGcode(r.gcode), 100);
+  }
+  // Populate costing fields from AI estimate
+  if (r.costing) {
+    const c = r.costing;
+    setAiEstimate('numSetups',     c.num_setups       || 1);
+    setAiEstimate('setupTimeEach', c.setup_time_min   || 20);
+    setAiEstimate('machTimeEach',  c.machining_time_min || 15);
+    setAiEstimate('loadTime',      c.load_unload_min  || 3);
+    setAiEstimate('feedRate',      c.feed_rate        || 0.15);
+    setAiEstimate('docRough',      c.doc_rough        || 2.0);
+    setAiEstimate('docFinish',     c.doc_finish       || 0.3);
+    if (c.notes) {
+      const hint = document.querySelector('#costingCard .cost-hint');
+      if (hint) hint.textContent = '💡 ' + c.notes;
+    }
+    recalcCost();
+  }
+}
+
+// ── COSTING FUNCTIONS ──────────────────────────────────────────
+function setAiEstimate(id, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = val;
+  // Only mark as AI-estimated if user hasn't modified it
+  if (!el.dataset.userModified) {
+    el.classList.add('ai-estimated');
+    el.classList.remove('user-modified');
+  }
+}
+
+function onUserEdit(el) {
+  el.dataset.userModified = '1';
+  el.classList.remove('ai-estimated');
+  el.classList.add('user-modified');
+}
+
+function recalcCost() {
+  const numSetups    = parseFloat(document.getElementById('numSetups').value)    || 1;
+  const setupTime    = parseFloat(document.getElementById('setupTimeEach').value) || 20;
+  const machTime     = parseFloat(document.getElementById('machTimeEach').value)  || 15;
+  const loadTime     = parseFloat(document.getElementById('loadTime').value)      || 3;
+  const inspTime     = parseFloat(document.getElementById('inspTime').value)      || 2;
+  const batchSize    = parseInt(document.getElementById('batchSize').value)       || 10;
+  const mhrMachine   = parseFloat(document.getElementById('mhrMachine').value)    || 450;
+  const mhrSetup     = parseFloat(document.getElementById('mhrSetup').value)      || 250;
+
+  // Total setup time for whole batch
+  const totalSetupMin = numSetups * setupTime;
+  // Setup cost amortised per piece
+  const setupCostPc = (totalSetupMin / 60) * mhrSetup / batchSize;
+  // Cycle time per piece = machining + load/unload + inspection
+  const cycleTimePc = machTime + loadTime + inspTime;
+  // Machining cost per piece
+  const machineCostPc = (cycleTimePc / 60) * mhrMachine;
+  // Total conversion per piece
+  const totalPc = setupCostPc + machineCostPc;
+  // Batch total
+  const batchTotal = totalPc * batchSize;
+
+  const fmt = v => '₹ ' + v.toFixed(0);
+  const fmtMin = v => v.toFixed(1) + ' min';
+
+  document.getElementById('csSetup').textContent    = fmt(setupCostPc);
+  document.getElementById('csMachine').textContent  = fmt(machineCostPc);
+  document.getElementById('csTotal').textContent    = fmt(totalPc);
+  document.getElementById('csCycleTime').textContent = fmtMin(cycleTimePc);
+  document.getElementById('csSetupTotal').textContent = fmtMin(totalSetupMin);
+  document.getElementById('csBatchCost').textContent = fmt(batchTotal);
+}
+
+function copyGcode() {
+  const box = document.getElementById('gcodeBox');
+  if (!box) return;
+  navigator.clipboard.writeText(decodeURIComponent(box.dataset.raw||'')).then(()=>{
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent='✓ Copied!';
+    setTimeout(()=>btn.textContent='📋 Copy G-Code',2000);
+  });
+}
+
+function toggleLayer(l) {
+  if(l==='rapid'){ showRapid=!showRapid; document.getElementById('bRapid').classList.toggle('active',showRapid); }
+  else { showFeed=!showFeed; document.getElementById('bFeed').classList.toggle('active',showFeed); }
+  draw(tpData, stockInfo);
+}
+function redraw() { if(animId){cancelAnimationFrame(animId);animId=null;} draw(tpData,stockInfo); }
+
+function draw(tp, stock) {
+  const cv = document.getElementById('cv');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  ctx.clearRect(0,0,W,H);
+  if (!tp||!tp.length) return;
+
+  const allX = tp.flatMap(m=>[m.from[0],m.to[0],...(m.center?[m.center[0]]:[])]);
+  const allY = tp.flatMap(m=>[m.from[1],m.to[1],...(m.center?[m.center[1]]:[])]);
+  const mn = {x:Math.min(...allX)-8, y:Math.min(...allY)-8};
+  const mx = {x:Math.max(...allX)+8, y:Math.max(...allY)+8};
+  const pad = 40;
+
+  // For turning: from[0]=X(diameter), from[1]=Z
+  // Map Z to horizontal, X(diameter) to vertical (0 at bottom = centreline)
+  let tx, ty;
+  if (mode === 'turning') {
+    // Z on horizontal axis (left=negative, right=positive)
+    // X diameter on vertical axis (0=centreline at bottom, increases upward)
+    tx = z => pad + (z - mn.y) / (mx.y - mn.y) * (W - pad*2);
+    ty = x => H - pad - (x - 0) / (mx.x + 8) * (H - pad*2);
+  } else {
+    tx = x => pad + (x - mn.x) / (mx.x - mn.x) * (W - pad*2);
+    ty = y => H - pad - (y - mn.y) / (mx.y - mn.y) * (H - pad*2);
+  }
+
+  // Background grid
+  ctx.strokeStyle='rgba(0,0,0,0.05)'; ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){
+    const gx=pad+i*(W-pad*2)/10, gy=pad+i*(H-pad*2)/10;
+    ctx.beginPath(); ctx.moveTo(gx,pad); ctx.lineTo(gx,H-pad); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad,gy); ctx.lineTo(W-pad,gy); ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle='rgba(80,90,110,0.8)'; ctx.font='bold 11px IBM Plex Mono';
+  if (mode === 'turning') {
+    ctx.fillText('← Z (into part)', pad, H-8);
+    ctx.save(); ctx.translate(13, H/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('X (dia)', -20, 0); ctx.restore();
+    // Centreline
+    ctx.strokeStyle='rgba(100,120,200,0.3)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(pad, H-pad); ctx.lineTo(W-pad, H-pad); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(100,120,200,0.6)'; ctx.font='9px IBM Plex Mono';
+    ctx.fillText('CENTRELINE (Z-AXIS)', pad+4, H-pad-4);
+  } else {
+    ctx.fillText('X →', W-36, H-8);
+    ctx.save(); ctx.translate(13, H/2); ctx.rotate(-Math.PI/2);
+    ctx.fillText('Y ↑', -10, 0); ctx.restore();
+  }
+
+  // Stock rectangle
+  if (stock && mode === 'turning') {
+    // Draw stock as rectangle from centreline up
+    ctx.fillStyle='rgba(255,200,50,0.08)';
+    ctx.strokeStyle='rgba(200,150,20,0.3)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    const sz0 = tx(mn.y+2), sW = tx(mn.y+2+stock.width)-sz0;
+    const sTop = ty(stock.height/2), sH = H-pad-sTop;
+    ctx.fillRect(sz0, sTop, sW, sH); ctx.strokeRect(sz0, sTop, sW, sH);
+    ctx.setLineDash([]);
+  } else if (stock) {
+    ctx.fillStyle='rgba(255,200,50,0.08)';
+    ctx.strokeStyle='rgba(200,150,20,0.3)'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+    const sx=tx(mn.x+2),sy=ty(stock.height),sw=tx(mn.x+2+stock.width)-sx,sh=ty(0)-sy;
+    ctx.fillRect(sx,sy,sw,sh); ctx.strokeRect(sx,sy,sw,sh); ctx.setLineDash([]);
+  }
+
+  // Z=0 reference line for turning
+  if (mode === 'turning') {
+    const z0x = tx(0);
+    if (z0x >= pad && z0x <= W-pad) {
+      ctx.strokeStyle='rgba(80,180,120,0.4)'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(z0x,pad); ctx.lineTo(z0x,H-pad); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='rgba(80,180,120,0.7)'; ctx.font='9px IBM Plex Mono';
+      ctx.fillText('Z0 FACE', z0x+3, pad+12);
+    }
+  }
+
+  // Draw toolpath moves
+  tp.forEach(m => {
+    if(m.type==='rapid'&&!showRapid) return;
+    if(m.type==='feed'&&!showFeed) return;
+    ctx.beginPath();
+    let fx, fy, tx2, ty2;
+    if (mode === 'turning') {
+      // from[0]=X(dia), from[1]=Z
+      fx=tx(m.from[1]); fy=ty(m.from[0]);
+      tx2=tx(m.to[1]);  ty2=ty(m.to[0]);
+    } else {
+      fx=tx(m.from[0]); fy=ty(m.from[1]);
+      tx2=tx(m.to[0]);  ty2=ty(m.to[1]);
+    }
+    if(m.type==='rapid'){
+      ctx.strokeStyle='rgba(220,60,60,0.8)'; ctx.lineWidth=1.2; ctx.setLineDash([5,3]);
+    } else if(m.type==='arc'){
+      ctx.strokeStyle='rgba(80,160,240,0.9)'; ctx.lineWidth=1.8; ctx.setLineDash([]);
+    } else {
+      ctx.strokeStyle='rgba(50,180,90,0.9)'; ctx.lineWidth=1.8; ctx.setLineDash([]);
+    }
+    ctx.moveTo(fx, fy); ctx.lineTo(tx2, ty2);
+    ctx.stroke(); ctx.setLineDash([]);
+
+    // Arrow on feed moves
+    if (m.type === 'feed') {
+      const angle = Math.atan2(ty2-fy, tx2-fx);
+      const mx2=(fx+tx2)/2, my2=(fy+ty2)/2;
+      ctx.beginPath();
+      ctx.moveTo(mx2, my2);
+      ctx.lineTo(mx2 - 7*Math.cos(angle-0.4), my2 - 7*Math.sin(angle-0.4));
+      ctx.lineTo(mx2 - 7*Math.cos(angle+0.4), my2 - 7*Math.sin(angle+0.4));
+      ctx.closePath();
+      ctx.fillStyle='rgba(50,180,90,0.7)'; ctx.fill();
+    }
+  });
+
+  // Start/end markers
+  if (tp.length) {
+    const s=tp[0].from, e=tp[tp.length-1].to;
+    let sfx,sfy,efx,efy;
+    if(mode==='turning'){
+      sfx=tx(s[1]); sfy=ty(s[0]); efx=tx(e[1]); efy=ty(e[0]);
+    } else {
+      sfx=tx(s[0]); sfy=ty(s[1]); efx=tx(e[0]); efy=ty(e[1]);
+    }
+    ctx.beginPath(); ctx.arc(sfx,sfy,6,0,Math.PI*2);
+    ctx.fillStyle='rgba(80,160,240,0.9)'; ctx.fill();
+    ctx.beginPath(); ctx.arc(efx,efy,5,0,Math.PI*2);
+    ctx.fillStyle='rgba(220,60,60,0.9)'; ctx.fill();
+    ctx.fillStyle='rgba(80,90,110,0.8)'; ctx.font='9px IBM Plex Mono';
+    ctx.fillText('START', sfx+7, sfy+4);
+    ctx.fillText('END', efx+7, efy+4);
+  }
+}
+
+function animatePath() {
+  if(!tpData.length) return;
+  if(animId){cancelAnimationFrame(animId);animId=null;}
+  const cv=document.getElementById('cv');
+  const W=cv.width, H=cv.height;
+  const allX=tpData.flatMap(m=>[m.from[0],m.to[0]]);
+  const allY=tpData.flatMap(m=>[m.from[1],m.to[1]]);
+  const mn={x:Math.min(...allX)-8,y:Math.min(...allY)-8};
+  const mx={x:Math.max(...allX)+8,y:Math.max(...allY)+8};
+  const pad=40;
+  let txFn, tyFn;
+  if (mode==='turning') {
+    txFn = z => pad + (z - mn.y) / (mx.y - mn.y) * (W - pad*2);
+    tyFn = x => H - pad - (x - 0) / (mx.x + 8) * (H - pad*2);
+  } else {
+    txFn = x => pad+(x-mn.x)/(mx.x-mn.x)*(W-pad*2);
+    tyFn = y => H-pad-(y-mn.y)/(mx.y-mn.y)*(H-pad*2);
+  }
+  let idx=0,prog=0;
+  function frame(){
+    if(idx>=tpData.length){draw(tpData,stockInfo);return;}
+    draw(tpData.slice(0,idx),stockInfo);
+    const m=tpData[idx]; prog+=0.05;
+    const px=m.from[0]+(m.to[0]-m.from[0])*prog;
+    const py=m.from[1]+(m.to[1]-m.from[1])*prog;
+    const ctx2=cv.getContext('2d');
+    const cx = mode==='turning' ? txFn(py) : txFn(px);
+    const cy = mode==='turning' ? tyFn(px) : tyFn(py);
+    ctx2.beginPath(); ctx2.arc(cx,cy,7,0,Math.PI*2);
+    ctx2.fillStyle='rgba(255,180,0,0.9)'; ctx2.fill();
+    ctx2.strokeStyle='#f0a500'; ctx2.lineWidth=2; ctx2.stroke();
+    if(prog>=1){prog=0;idx++;}
+    animId=requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+window.addEventListener('resize',()=>{if(tpData.length){const cv=document.getElementById('cv');cv.width=cv.offsetWidth||500;draw(tpData,stockInfo);}});
+</script>
+
+// Key status already initialized above in run() section
+
+</body>
+</html>
